@@ -1,0 +1,32 @@
+{
+  "name": "caseloadtracker-backend",
+  "version": "1.0.0",
+  "description": "Backend for Caseload Tracker application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "caseload",
+    "tracker",
+    "backend",
+    "express",
+    "mysql"
+  ],
+  "author": "Your Name",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-validator": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.10.2",
+    "pdfkit-table": "^0.1.99"
+  }
+}
