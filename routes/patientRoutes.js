@@ -607,4 +607,31 @@ router.get('/patients/:patientId/treatment-history', async (req, res) => {
   }
 });
 
+// Get psychiatric consultants for a clinic
+router.get('/consultants', async (req, res) => {
+  const { clinicId } = req.query;
+  
+  if (!clinicId) {
+    return res.status(400).json({ error: 'Clinic ID is required' });
+  }
+
+  try {
+    const query = `
+      SELECT u.id, u.name
+      FROM users u 
+      JOIN user_clinics uc ON u.id = uc.user_id
+      WHERE uc.clinic_id = ? 
+      AND u.role = 'Psychiatric Consultant'
+      ORDER BY u.name
+    `;
+    
+    const [consultants] = await db.query(query, [clinicId]);
+    
+    res.status(200).json(consultants);
+  } catch (error) {
+    console.error('Error fetching psychiatric consultants:', error);
+    res.status(500).json({ error: 'Failed to fetch consultants' });
+  }
+});
+
 module.exports = router;
