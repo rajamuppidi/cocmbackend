@@ -85,7 +85,7 @@ router.get('/recent-patients/:userId', async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT DISTINCT p.id, p.first_name as firstName, p.last_name as lastName, p.mrn, 
-              c.contact_date as referralDate, c.consultant_notes as referralReason,
+              c.contact_date as referralDate, c.notes as referralReason,
               (SELECT MAX(a2.score) FROM assessments a2 WHERE a2.patient_id = p.id AND a2.type = 'PHQ-9') as phq9Score,
               (SELECT MAX(a3.score) FROM assessments a3 WHERE a3.patient_id = p.id AND a3.type = 'GAD-7') as gad7Score
        FROM patients p
@@ -119,7 +119,7 @@ router.get('/assigned-patients/:userId', async (req, res) => {
       SELECT DISTINCT p.id, p.first_name as firstName, p.last_name as lastName, p.mrn, p.dob,
              p.status, 
              (SELECT DATE_FORMAT(MAX(c.contact_date), '%Y-%m-%d') FROM contacts c WHERE c.patient_id = p.id) as referralDate, 
-             (SELECT c.consultant_notes FROM contacts c WHERE c.patient_id = p.id ORDER BY c.contact_date DESC LIMIT 1) as referralReason,
+             (SELECT c.notes FROM contacts c WHERE c.patient_id = p.id ORDER BY c.contact_date DESC LIMIT 1) as referralReason,
              (SELECT MAX(a2.score) FROM assessments a2 WHERE a2.patient_id = p.id AND a2.type = 'PHQ-9') as phq9Score,
              (SELECT MAX(a3.score) FROM assessments a3 WHERE a3.patient_id = p.id AND a3.type = 'GAD-7') as gad7Score,
              (SELECT u2.name FROM user_patients up2 JOIN users u2 ON up2.user_id = u2.id 
