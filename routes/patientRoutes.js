@@ -277,10 +277,10 @@ router.post('/initial-assessment', async (req, res) => {
 
     await db.query(
       `INSERT INTO contacts (patient_id, contact_date, contact_type, interaction_mode, duration_minutes, 
-                            flag_psychiatric_consult, notes, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                            flag_psychiatric_consult, notes, created_by, psychiatric_consultant_id, discuss_with_consultant) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [patientId, formattedContactDate, contactType, sessionType, sessionDuration,
-       discussWithConsultant ? 1 : 0, consultantNotes, createdBy]
+       discussWithConsultant ? 1 : 0, consultantNotes, createdBy, numericPsychId, discussWithConsultant ? 1 : 0]
     );
 
     await db.query(
@@ -403,10 +403,10 @@ router.post('/followup-assessment', async (req, res) => {
 
     await db.query(
       `INSERT INTO contacts (patient_id, contact_date, contact_type, interaction_mode, duration_minutes, 
-                            flag_psychiatric_consult, notes, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                            flag_psychiatric_consult, notes, created_by, psychiatric_consultant_id, discuss_with_consultant) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [patientId, formattedContactDate, contactType, sessionType, sessionDuration,
-       discussWithConsultant ? 1 : 0, consultantNotes, createdBy]
+       discussWithConsultant ? 1 : 0, consultantNotes, createdBy, numericPsychId, discussWithConsultant ? 1 : 0]
     );
 
     await db.query(`UPDATE patients SET phq9_last = ?, gad7_last = ? WHERE id = ?`, [phq9Score, gad7Score, patientId]);
