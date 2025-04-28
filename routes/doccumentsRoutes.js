@@ -26,65 +26,14 @@ router.get('/patients/:patientId/documents', async (req, res) => {
     );
     console.log('Contact attempts fetched:', contactAttempts);
 
-    // Fetch safety plans
-    const [safetyPlans] = await db.query(
-      `SELECT contact_date, symptoms_json, columbia_suicide_severity, anxiety_panic_attacks,
-              past_mental_health_json, psychiatric_hospitalizations, substance_use_json,
-              medical_history_json, other_medical_history, family_mental_health_json,
-              social_situation_json, current_medications, past_medications, narrative,
-              safety_plan_discussed, minutes
-      FROM safety_plans WHERE patient_id = ? ORDER BY contact_date DESC`,
+    // Fetch patient intake forms
+    const [intakeForms] = await db.query(
+      `SELECT contact_date FROM patient_intake WHERE patient_id = ? ORDER BY contact_date DESC`,
       [patientId]
     );
-    console.log('Safety Plans fetched:', safetyPlans);
+    console.log('Intake forms fetched:', intakeForms);
 
     const folders = [];
-
-    // Process safety plan folders
-    if (safetyPlans && safetyPlans.length > 0) {
-      const safetyPlanFolders = safetyPlans.map((plan) => {
-        try {
-          // Helper function to safely parse JSON if it's a string
-          const safeParse = (data) => {
-            if (typeof data === 'string') {
-              return JSON.parse(data);
-            }
-            return data || {}; // Return as-is if already an object, or empty object if null/undefined
-          };
-
-          return {
-            folderName: `Safety_Plan_${format(new Date(plan.contact_date), 'yyyy-MM-dd')}`,
-            date: format(new Date(plan.contact_date), 'yyyy-MM-dd'),
-            files: [
-              {
-                name: `Safety_Plan_${format(new Date(plan.contact_date), 'yyyy-MM-dd')}.pdf`,
-                type: 'Safety_Plan',
-                symptoms: safeParse(plan.symptoms_json),
-                columbiaSuicideSeverity: plan.columbia_suicide_severity || 'N/A',
-                anxietyPanicAttacks: plan.anxiety_panic_attacks || 'N/A',
-                pastMentalHealth: safeParse(plan.past_mental_health_json),
-                psychiatricHospitalizations: plan.psychiatric_hospitalizations || 'N/A',
-                substanceUse: safeParse(plan.substance_use_json),
-                medicalHistory: safeParse(plan.medical_history_json),
-                otherMedicalHistory: plan.other_medical_history || 'N/A',
-                familyMentalHealth: safeParse(plan.family_mental_health_json),
-                socialSituation: safeParse(plan.social_situation_json),
-                currentMedications: plan.current_medications || 'N/A',
-                pastMedications: plan.past_medications || 'N/A',
-                narrative: plan.narrative || 'No narrative provided',
-                safetyPlanDiscussed: plan.safety_plan_discussed,
-                minutes: plan.minutes,
-              },
-            ],
-            isOpen: false,
-          };
-        } catch (parseError) {
-          console.error(`Error parsing Safety Plan data for ${plan.contact_date}:`, parseError);
-          return null; // Skip malformed entries
-        }
-      }).filter(folder => folder !== null); // Remove null entries
-      folders.push(...safetyPlanFolders);
-    }
 
     // Process assessment folders
     if (contacts && contacts.length > 0) {
@@ -114,6 +63,23 @@ router.get('/patients/:patientId/documents', async (req, res) => {
       folders.push(...assessmentFolders);
     }
 
+    // Process intake form folders
+    if (intakeForms && intakeForms.length > 0) {
+      const intakeFolders = intakeForms.map((intake) => ({
+        folderName: `Intake_Form_${format(new Date(intake.contact_date), 'yyyy-MM-dd')}`,
+        date: format(new Date(intake.contact_date), 'yyyy-MM-dd'),
+        files: [
+          {
+            name: `Intake_Form_${format(new Date(intake.contact_date), 'yyyy-MM-dd')}.pdf`,
+            type: 'Intake_Form',
+            contactDate: format(new Date(intake.contact_date), 'yyyy-MM-dd'),
+          },
+        ],
+        isOpen: false,
+      }));
+      folders.push(...intakeFolders);
+    }
+
     // Process contact attempt folders
     if (contactAttempts && contactAttempts.length > 0) {
       const attemptFolders = contactAttempts.map((attempt) => ({
@@ -131,6 +97,11 @@ router.get('/patients/:patientId/documents', async (req, res) => {
       }));
       folders.push(...attemptFolders);
     }
+
+    // Sort folders by date (newest first)
+    folders.sort((a, b) => {
+      return new Date(b.date) - new Date(a.date);
+    });
 
     if (folders.length === 0) {
       console.log('No documents found for patient ID:', patientId);
@@ -367,7 +338,7 @@ router.get('/patients/:patientId/contact-attempts/:attemptDate/export', async (r
       return res.status(404).json({ error: 'Contact attempt not found', details: { patientId, normalizedDate } });
     }
 
-    const data = assessment[0];
+    const data = attempt[0];
     console.log('Contact Attempt Data:', data);
 
     const minutes = Number.isNaN(Number(data.minutes)) ? 0 : Number(data.minutes);

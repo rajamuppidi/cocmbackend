@@ -10,8 +10,9 @@ const reminderRoutes = require('./routes/reminderRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const doccumentRoutes = require('./routes/doccumentsRoutes');
 const contactAttemptsRoutes = require('./routes/contact-attempts');
-const safetyRoute = require('./routes/safetyRoute'); // New route import
-const psychRoutes = require('./routes/psychRoutes'); // Add the psychiatric routes
+const intakeRoute = require('./routes/intakeRoute'); // Patient intake form routes
+const safetyRoute = require('./routes/safetyRoute'); // Safety plan flag functionality
+const psychRoutes = require('./routes/psychRoutes'); // Psychiatric routes
 
 dotenv.config();
 
@@ -44,7 +45,8 @@ app.use('/api/reminders', reminderRoutes);
 app.use('/api', patientRoutes); // Use /api prefix as per your working setup
 app.use('/api', doccumentRoutes);
 app.use('/api', contactAttemptsRoutes); // Existing route
-app.use('/api', safetyRoute); // New route added
+app.use('/api', intakeRoute); // Changed from safetyRoute to intakeRoute
+app.use('/api', safetyRoute); // Add simplified safety route
 app.use('/api/psych', psychRoutes); // Add the psychiatric routes
 
 // Test database connection route with logging

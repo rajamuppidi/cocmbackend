@@ -257,8 +257,9 @@ router.post('/initial-assessment', async (req, res) => {
     if (isNaN(parsedContactDate.getTime())) throw new Error('Invalid contact date format');
     const formattedContactDate = format(parsedContactDate, 'yyyy-MM-dd');
 
-    await db.query('UPDATE patients SET status = "T" WHERE id = ?', [patientId]);
-
+    // No longer changing patient status from A to T
+    // Patient remains in 'A' status after initial assessment
+    
     // Save PHQ-9 with answers
     console.log('Saving PHQ-9 - Answers:', phq9Answers);
     await db.query(
