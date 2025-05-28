@@ -34,7 +34,7 @@ CREATE TABLE `assessments` (
   KEY `patient_id` (`patient_id`),
   KEY `idx_assessments_patient_date_type` (`patient_id`,`date`,`type`),
   CONSTRAINT `assessments_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=181 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=185 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -43,7 +43,7 @@ CREATE TABLE `assessments` (
 
 LOCK TABLES `assessments` WRITE;
 /*!40000 ALTER TABLE `assessments` DISABLE KEYS */;
-INSERT INTO `assessments` VALUES (177,41,'PHQ-9',19,'2025-04-26','2025-04-28 02:04:26','[3,3,3,3,2,2,2,1,0]'),(178,41,'GAD-7',16,'2025-04-26','2025-04-28 02:04:26','[2,2,0,3,3,3,3]'),(179,43,'PHQ-9',13,'2025-05-01','2025-05-02 20:56:59','[0,1,0,3,3,1,0,3,2]'),(180,43,'GAD-7',3,'2025-05-01','2025-05-02 20:56:59','[0,0,0,1,1,1,0]');
+INSERT INTO `assessments` VALUES (177,41,'PHQ-9',19,'2025-04-26','2025-04-28 02:04:26','[3,3,3,3,2,2,2,1,0]'),(178,41,'GAD-7',16,'2025-04-26','2025-04-28 02:04:26','[2,2,0,3,3,3,3]'),(179,43,'PHQ-9',13,'2025-05-01','2025-05-02 20:56:59','[0,1,0,3,3,1,0,3,2]'),(180,43,'GAD-7',3,'2025-05-01','2025-05-02 20:56:59','[0,0,0,1,1,1,0]'),(181,42,'PHQ-9',5,'2025-05-26','2025-05-28 01:36:16','[0,0,0,0,0,0,1,2,2]'),(182,42,'GAD-7',15,'2025-05-26','2025-05-28 01:36:16','[3,3,0,0,3,3,3]'),(183,42,'PHQ-9',7,'2025-05-26','2025-05-28 01:37:40','[0,0,0,2,0,0,0,3,2]'),(184,42,'GAD-7',4,'2025-05-26','2025-05-28 01:37:40','[0,0,2,0,0,0,2]');
 /*!40000 ALTER TABLE `assessments` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -195,7 +195,7 @@ CREATE TABLE `contacts` (
   CONSTRAINT `contacts_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`),
   CONSTRAINT `contacts_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_psych_consultant` FOREIGN KEY (`psychiatric_consultant_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=88 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=90 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -204,7 +204,7 @@ CREATE TABLE `contacts` (
 
 LOCK TABLES `contacts` WRITE;
 /*!40000 ALTER TABLE `contacts` DISABLE KEYS */;
-INSERT INTO `contacts` VALUES (86,41,'2025-04-26','Initial Assessment','PHQ-9',10,0,'',9,'in_clinic',0,NULL,NULL),(87,43,'2025-05-01','Initial Assessment','PHQ-9',50,1,'See this patient carefully',9,'in_clinic',1,8,NULL);
+INSERT INTO `contacts` VALUES (86,41,'2025-04-26','Initial Assessment','PHQ-9',10,0,'',9,'in_clinic',0,NULL,NULL),(87,43,'2025-05-01','Initial Assessment','PHQ-9',50,1,'See this patient carefully',9,'in_clinic',1,8,NULL),(88,42,'2025-05-26','Initial Assessment','PHQ-9',10,0,'',9,'in_clinic',0,NULL,NULL),(89,42,'2025-05-26','Follow-up Assessment','PHQ-9',40,0,NULL,9,'by_phone',0,NULL,NULL);
 /*!40000 ALTER TABLE `contacts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -249,6 +249,7 @@ CREATE TABLE `minute_tracking` (
   `tracking_date` date NOT NULL,
   `contact_attempt_id` int DEFAULT NULL,
   `psych_consult_id` int DEFAULT NULL,
+  `activity_type` varchar(50) DEFAULT 'Patient Contact',
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   KEY `contact_attempt_id` (`contact_attempt_id`),
@@ -256,7 +257,7 @@ CREATE TABLE `minute_tracking` (
   CONSTRAINT `fk_psych_consult` FOREIGN KEY (`psych_consult_id`) REFERENCES `psych_consultations` (`id`) ON DELETE SET NULL,
   CONSTRAINT `minute_tracking_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `minute_tracking_ibfk_2` FOREIGN KEY (`contact_attempt_id`) REFERENCES `contact_attempts` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=106 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=112 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -265,7 +266,7 @@ CREATE TABLE `minute_tracking` (
 
 LOCK TABLES `minute_tracking` WRITE;
 /*!40000 ALTER TABLE `minute_tracking` DISABLE KEYS */;
-INSERT INTO `minute_tracking` VALUES (1,5,4,'2024-09-30',NULL,NULL),(2,5,50,'2024-09-30',NULL,NULL),(3,5,50,'2024-09-30',NULL,NULL),(4,5,6,'2024-10-01',NULL,NULL),(5,9,3,'2024-10-01',NULL,NULL),(6,9,20,'2024-10-02',NULL,NULL),(7,8,15,'2024-10-23',NULL,NULL),(8,8,26,'2024-10-23',NULL,NULL),(9,8,26,'2024-10-23',NULL,NULL),(10,8,5,'2024-10-23',NULL,NULL),(11,8,6,'2024-10-23',NULL,NULL),(12,8,19,'2024-10-23',NULL,NULL),(13,8,50,'2024-10-23',NULL,NULL),(14,8,30,'2024-10-30',NULL,NULL),(15,8,30,'2024-10-30',NULL,NULL),(16,8,17,'2024-11-08',NULL,NULL),(17,8,59,'2024-11-08',NULL,NULL),(18,8,10,'2024-11-08',NULL,NULL),(19,8,10,'2024-11-08',NULL,NULL),(20,9,20,'2024-11-08',NULL,NULL),(21,9,5,'2024-11-11',NULL,NULL),(22,9,6,'2024-11-20',NULL,NULL),(23,9,3,'2024-11-18',NULL,NULL),(24,9,50,'2024-11-14',NULL,NULL),(25,9,5,'2024-12-01',NULL,NULL),(26,9,10,'2024-12-04',NULL,NULL),(27,9,15,'2024-12-05',NULL,NULL),(28,9,15,'2024-11-10',NULL,NULL),(29,9,15,'2024-12-02',NULL,NULL),(30,9,5,'2024-12-10',NULL,NULL),(31,9,30,'2025-02-07',NULL,NULL),(32,9,50,'2025-02-07',NULL,NULL),(33,9,20,'2025-02-08',NULL,NULL),(35,9,20,'2025-02-06',NULL,NULL),(36,9,22,'2025-02-09',NULL,NULL),(37,9,60,'2025-02-09',NULL,NULL),(38,9,25,'2025-02-12',NULL,NULL),(39,9,45,'2025-02-12',NULL,NULL),(40,9,15,'2025-02-11',NULL,NULL),(41,9,9,'2025-02-11',NULL,NULL),(42,9,50,'2025-02-26',NULL,NULL),(43,9,15,'2025-02-27',NULL,NULL),(44,9,20,'2025-02-27',NULL,NULL),(45,9,20,'2025-02-27',NULL,NULL),(46,9,50,'2025-02-27',NULL,NULL),(47,9,20,'2025-02-27',NULL,NULL),(48,9,10,'2025-02-28',NULL,NULL),(49,9,17,'2025-03-04',NULL,NULL),(50,9,7,'2025-03-04',NULL,NULL),(51,9,7,'2025-03-04',NULL,NULL),(52,9,10,'2025-03-04',NULL,NULL),(53,9,20,'2025-03-13',NULL,NULL),(54,9,10,'2025-03-17',NULL,NULL),(55,9,30,'2025-03-17',NULL,NULL),(56,9,10,'2025-03-18',NULL,NULL),(57,9,17,'2025-03-17',NULL,NULL),(58,9,5,'2025-03-17',NULL,NULL),(59,9,20,'2025-02-24',NULL,NULL),(60,9,3,'2025-03-12',NULL,NULL),(61,9,11,'2025-03-17',NULL,NULL),(62,9,11,'2025-03-17',NULL,NULL),(63,9,15,'2025-03-18',NULL,NULL),(64,9,9,'2025-03-18',NULL,NULL),(65,9,6,'2025-03-12',NULL,NULL),(66,9,14,'2025-03-18',NULL,NULL),(67,9,8,'2025-03-22',NULL,NULL),(68,9,50,'2025-03-26',NULL,NULL),(69,9,6,'2025-03-27',NULL,NULL),(70,9,60,'2025-03-28',NULL,NULL),(71,9,10,'2025-03-28',NULL,NULL),(72,9,20,'2025-04-02',NULL,NULL),(73,9,50,'2025-04-01',NULL,NULL),(74,9,50,'2025-04-02',NULL,NULL),(75,9,30,'2025-04-02',NULL,NULL),(77,9,10,'2025-04-01',NULL,NULL),(78,9,5,'2025-04-01',NULL,NULL),(79,9,28,'2025-04-01',NULL,NULL),(80,9,13,'2025-03-30',NULL,NULL),(81,9,32,'2025-04-01',NULL,NULL),(82,9,21,'2025-04-01',NULL,NULL),(85,9,5,'2025-04-01',NULL,NULL),(86,9,16,'2025-04-01',NULL,NULL),(87,9,1,'2025-04-01',NULL,NULL),(88,9,3,'2025-04-01',NULL,NULL),(90,9,30,'2025-04-07',NULL,NULL),(92,9,15,'2025-04-07',NULL,NULL),(93,9,50,'2025-04-07',NULL,NULL),(94,9,120,'2025-04-07',NULL,NULL),(97,9,30,'2025-04-27',NULL,NULL),(98,9,30,'2025-04-27',NULL,NULL),(99,9,30,'2025-04-27',NULL,NULL),(100,9,30,'2025-04-27',NULL,NULL),(101,9,30,'2025-04-27',NULL,NULL),(102,9,10,'2025-04-26',NULL,NULL),(103,9,7,'2025-04-27',15,NULL),(104,9,60,'2025-05-01',NULL,NULL),(105,9,50,'2025-05-01',NULL,NULL);
+INSERT INTO `minute_tracking` VALUES (1,5,4,'2024-09-30',NULL,NULL,'Patient Contact'),(2,5,50,'2024-09-30',NULL,NULL,'Patient Contact'),(3,5,50,'2024-09-30',NULL,NULL,'Patient Contact'),(4,5,6,'2024-10-01',NULL,NULL,'Patient Contact'),(5,9,3,'2024-10-01',NULL,NULL,'Patient Contact'),(6,9,20,'2024-10-02',NULL,NULL,'Patient Contact'),(7,8,15,'2024-10-23',NULL,NULL,'Patient Contact'),(8,8,26,'2024-10-23',NULL,NULL,'Patient Contact'),(9,8,26,'2024-10-23',NULL,NULL,'Patient Contact'),(10,8,5,'2024-10-23',NULL,NULL,'Patient Contact'),(11,8,6,'2024-10-23',NULL,NULL,'Patient Contact'),(12,8,19,'2024-10-23',NULL,NULL,'Patient Contact'),(13,8,50,'2024-10-23',NULL,NULL,'Patient Contact'),(14,8,30,'2024-10-30',NULL,NULL,'Patient Contact'),(15,8,30,'2024-10-30',NULL,NULL,'Patient Contact'),(16,8,17,'2024-11-08',NULL,NULL,'Patient Contact'),(17,8,59,'2024-11-08',NULL,NULL,'Patient Contact'),(18,8,10,'2024-11-08',NULL,NULL,'Patient Contact'),(19,8,10,'2024-11-08',NULL,NULL,'Patient Contact'),(20,9,20,'2024-11-08',NULL,NULL,'Patient Contact'),(21,9,5,'2024-11-11',NULL,NULL,'Patient Contact'),(22,9,6,'2024-11-20',NULL,NULL,'Patient Contact'),(23,9,3,'2024-11-18',NULL,NULL,'Patient Contact'),(24,9,50,'2024-11-14',NULL,NULL,'Patient Contact'),(25,9,5,'2024-12-01',NULL,NULL,'Patient Contact'),(26,9,10,'2024-12-04',NULL,NULL,'Patient Contact'),(27,9,15,'2024-12-05',NULL,NULL,'Patient Contact'),(28,9,15,'2024-11-10',NULL,NULL,'Patient Contact'),(29,9,15,'2024-12-02',NULL,NULL,'Patient Contact'),(30,9,5,'2024-12-10',NULL,NULL,'Patient Contact'),(31,9,30,'2025-02-07',NULL,NULL,'Patient Contact'),(32,9,50,'2025-02-07',NULL,NULL,'Patient Contact'),(33,9,20,'2025-02-08',NULL,NULL,'Patient Contact'),(35,9,20,'2025-02-06',NULL,NULL,'Patient Contact'),(36,9,22,'2025-02-09',NULL,NULL,'Patient Contact'),(37,9,60,'2025-02-09',NULL,NULL,'Patient Contact'),(38,9,25,'2025-02-12',NULL,NULL,'Patient Contact'),(39,9,45,'2025-02-12',NULL,NULL,'Patient Contact'),(40,9,15,'2025-02-11',NULL,NULL,'Patient Contact'),(41,9,9,'2025-02-11',NULL,NULL,'Patient Contact'),(42,9,50,'2025-02-26',NULL,NULL,'Patient Contact'),(43,9,15,'2025-02-27',NULL,NULL,'Patient Contact'),(44,9,20,'2025-02-27',NULL,NULL,'Patient Contact'),(45,9,20,'2025-02-27',NULL,NULL,'Patient Contact'),(46,9,50,'2025-02-27',NULL,NULL,'Patient Contact'),(47,9,20,'2025-02-27',NULL,NULL,'Patient Contact'),(48,9,10,'2025-02-28',NULL,NULL,'Patient Contact'),(49,9,17,'2025-03-04',NULL,NULL,'Patient Contact'),(50,9,7,'2025-03-04',NULL,NULL,'Patient Contact'),(51,9,7,'2025-03-04',NULL,NULL,'Patient Contact'),(52,9,10,'2025-03-04',NULL,NULL,'Patient Contact'),(53,9,20,'2025-03-13',NULL,NULL,'Patient Contact'),(54,9,10,'2025-03-17',NULL,NULL,'Patient Contact'),(55,9,30,'2025-03-17',NULL,NULL,'Patient Contact'),(56,9,10,'2025-03-18',NULL,NULL,'Patient Contact'),(57,9,17,'2025-03-17',NULL,NULL,'Patient Contact'),(58,9,5,'2025-03-17',NULL,NULL,'Patient Contact'),(59,9,20,'2025-02-24',NULL,NULL,'Patient Contact'),(60,9,3,'2025-03-12',NULL,NULL,'Patient Contact'),(61,9,11,'2025-03-17',NULL,NULL,'Patient Contact'),(62,9,11,'2025-03-17',NULL,NULL,'Patient Contact'),(63,9,15,'2025-03-18',NULL,NULL,'Patient Contact'),(64,9,9,'2025-03-18',NULL,NULL,'Patient Contact'),(65,9,6,'2025-03-12',NULL,NULL,'Patient Contact'),(66,9,14,'2025-03-18',NULL,NULL,'Patient Contact'),(67,9,8,'2025-03-22',NULL,NULL,'Patient Contact'),(68,9,50,'2025-03-26',NULL,NULL,'Patient Contact'),(69,9,6,'2025-03-27',NULL,NULL,'Patient Contact'),(70,9,60,'2025-03-28',NULL,NULL,'Patient Contact'),(71,9,10,'2025-03-28',NULL,NULL,'Patient Contact'),(72,9,20,'2025-04-02',NULL,NULL,'Patient Contact'),(73,9,50,'2025-04-01',NULL,NULL,'Patient Contact'),(74,9,50,'2025-04-02',NULL,NULL,'Patient Contact'),(75,9,30,'2025-04-02',NULL,NULL,'Patient Contact'),(77,9,10,'2025-04-01',NULL,NULL,'Patient Contact'),(78,9,5,'2025-04-01',NULL,NULL,'Patient Contact'),(79,9,28,'2025-04-01',NULL,NULL,'Patient Contact'),(80,9,13,'2025-03-30',NULL,NULL,'Patient Contact'),(81,9,32,'2025-04-01',NULL,NULL,'Patient Contact'),(82,9,21,'2025-04-01',NULL,NULL,'Patient Contact'),(85,9,5,'2025-04-01',NULL,NULL,'Patient Contact'),(86,9,16,'2025-04-01',NULL,NULL,'Patient Contact'),(87,9,1,'2025-04-01',NULL,NULL,'Patient Contact'),(88,9,3,'2025-04-01',NULL,NULL,'Patient Contact'),(90,9,30,'2025-04-07',NULL,NULL,'Patient Contact'),(92,9,15,'2025-04-07',NULL,NULL,'Patient Contact'),(93,9,50,'2025-04-07',NULL,NULL,'Patient Contact'),(94,9,120,'2025-04-07',NULL,NULL,'Patient Contact'),(97,9,30,'2025-04-27',NULL,NULL,'Patient Contact'),(98,9,30,'2025-04-27',NULL,NULL,'Patient Contact'),(99,9,30,'2025-04-27',NULL,NULL,'Patient Contact'),(100,9,30,'2025-04-27',NULL,NULL,'Patient Contact'),(101,9,30,'2025-04-27',NULL,NULL,'Patient Contact'),(102,9,10,'2025-04-26',NULL,NULL,'Patient Contact'),(103,9,7,'2025-04-27',15,NULL,'Patient Contact'),(104,9,60,'2025-05-01',NULL,NULL,'Patient Contact'),(105,9,50,'2025-05-01',NULL,NULL,'Patient Contact'),(106,9,20,'2025-05-18',NULL,NULL,'Safety Plan'),(107,9,10,'2025-05-27',NULL,NULL,'Patient Contact'),(108,9,10,'2025-05-26',NULL,NULL,'Patient Contact'),(109,9,10,'2025-05-28',NULL,NULL,'Safety Plan'),(110,9,40,'2025-05-26',NULL,NULL,'Patient Contact'),(111,9,100,'2025-05-28',NULL,NULL,'Safety Plan');
 /*!40000 ALTER TABLE `minute_tracking` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -337,7 +338,7 @@ CREATE TABLE `patient_flags` (
   PRIMARY KEY (`id`),
   KEY `patient_id` (`patient_id`),
   CONSTRAINT `patient_flags_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=63 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -346,7 +347,7 @@ CREATE TABLE `patient_flags` (
 
 LOCK TABLES `patient_flags` WRITE;
 /*!40000 ALTER TABLE `patient_flags` DISABLE KEYS */;
-INSERT INTO `patient_flags` VALUES (58,41,'Pediatric Patient'),(59,43,'Safety Plan'),(60,43,'Psychiatric Consult');
+INSERT INTO `patient_flags` VALUES (58,41,'Pediatric Patient'),(60,43,'Psychiatric Consult');
 /*!40000 ALTER TABLE `patient_flags` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -382,7 +383,7 @@ CREATE TABLE `patient_intake` (
   KEY `created_by_idx` (`created_by`),
   CONSTRAINT `fk_patient_intake_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_patient_intake_patient_id` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -391,7 +392,7 @@ CREATE TABLE `patient_intake` (
 
 LOCK TABLES `patient_intake` WRITE;
 /*!40000 ALTER TABLE `patient_intake` DISABLE KEYS */;
-INSERT INTO `patient_intake` VALUES (21,41,9,'2025-04-27','{\"paranoia\": false, \"flashbacks\": false, \"nightmares\": false, \"changeInSleep\": false, \"depressedMood\": false, \"fearfulOnEdge\": false, \"muscleTension\": false, \"talkingTooFast\": false, \"historyOfTrauma\": false, \"constantWorrying\": false, \"feelingGuiltyBad\": false, \"suicidalThoughts\": false, \"difficultyTrusting\": false, \"severeIrritability\": true, \"compulsiveBehaviors\": false, \"fatigueFromWorrying\": false, \"hearingSeeingThings\": false, \"lowEnergyMotivation\": true, \"elevatedEuphoricMood\": true, \"troubleConcentrating\": false, \"worryingAboutJudgment\": false, \"avoidingTraumaTriggers\": false, \"littlePleasureInterest\": false, \"lowOrIncreasedAppetite\": false, \"unableToControlWorrying\": false, \"avoidingSocialSituations\": false, \"impulsivityOutOfCharacter\": false, \"recurrentUnwantedThoughts\": false, \"troubleSleepingDueToWorry\": false, \"avoidingPanicAttackTriggers\": false}',NULL,NULL,'{\"suicideAttempt\": false, \"therapyCounselingPast\": false, \"therapyCounselingCurrent\": false, \"substanceUseTreatmentOutpatient\": false, \"substanceUseTreatmentResidential\": false}',NULL,'{\"alcohol\": {\"past\": true, \"current\": false}, \"cocaine\": {\"past\": true, \"current\": false}, \"cannabis\": {\"past\": true, \"current\": false}, \"painPills\": {\"past\": true, \"current\": false}, \"heroinFentanyl\": {\"past\": true, \"current\": false}, \"methamphetamine\": {\"past\": true, \"current\": false}, \"prescriptionMisuse\": {\"past\": true, \"current\": false}}','{\"htn\": false, \"thyroid\": true, \"diabetes\": true, \"copdAsthma\": true, \"dyslipemia\": true, \"drugAllergies\": true}',NULL,'{\"anxiety\": true, \"depression\": true, \"substanceUse\": true, \"schizophrenia\": true, \"bipolarDisorder\": true}','{\"children\": \"0\", \"employment\": \"No\", \"maritalStatus\": \"Single\", \"livingSituation\": \"Home\"}',NULL,NULL,NULL,30,'2025-04-28 00:58:50'),(22,43,9,'2025-05-01','{\"paranoia\": false, \"flashbacks\": false, \"nightmares\": false, \"changeInSleep\": true, \"depressedMood\": false, \"fearfulOnEdge\": false, \"muscleTension\": false, \"talkingTooFast\": false, \"historyOfTrauma\": false, \"constantWorrying\": false, \"feelingGuiltyBad\": false, \"suicidalThoughts\": false, \"difficultyTrusting\": false, \"severeIrritability\": false, \"compulsiveBehaviors\": true, \"fatigueFromWorrying\": false, \"hearingSeeingThings\": false, \"lowEnergyMotivation\": true, \"elevatedEuphoricMood\": false, \"troubleConcentrating\": false, \"worryingAboutJudgment\": false, \"avoidingTraumaTriggers\": false, \"littlePleasureInterest\": false, \"lowOrIncreasedAppetite\": false, \"unableToControlWorrying\": false, \"avoidingSocialSituations\": true, \"impulsivityOutOfCharacter\": true, \"recurrentUnwantedThoughts\": false, \"troubleSleepingDueToWorry\": false, \"avoidingPanicAttackTriggers\": false}',NULL,NULL,'{\"suicideAttempt\": true, \"therapyCounselingPast\": true, \"therapyCounselingCurrent\": true, \"substanceUseTreatmentOutpatient\": false, \"substanceUseTreatmentResidential\": false}',NULL,'{\"alcohol\": {\"past\": false, \"current\": true}, \"cocaine\": {\"past\": false, \"current\": true}, \"cannabis\": {\"past\": false, \"current\": true}, \"painPills\": {\"past\": false, \"current\": true}, \"heroinFentanyl\": {\"past\": false, \"current\": true}, \"methamphetamine\": {\"past\": false, \"current\": true}, \"prescriptionMisuse\": {\"past\": false, \"current\": true}}','{\"htn\": true, \"thyroid\": true, \"diabetes\": true, \"copdAsthma\": false, \"dyslipemia\": true, \"drugAllergies\": false}',NULL,'{\"anxiety\": true, \"depression\": true, \"substanceUse\": true, \"schizophrenia\": false, \"bipolarDisorder\": false}','{\"children\": \"5\", \"employment\": \"Walmart\", \"maritalStatus\": \"Single\", \"livingSituation\": \"Well\"}','Prozac','Retinol','This patient is too much dangerous ',60,'2025-05-02 20:56:02');
+INSERT INTO `patient_intake` VALUES (21,41,9,'2025-04-27','{\"paranoia\": false, \"flashbacks\": false, \"nightmares\": false, \"changeInSleep\": false, \"depressedMood\": false, \"fearfulOnEdge\": false, \"muscleTension\": false, \"talkingTooFast\": false, \"historyOfTrauma\": false, \"constantWorrying\": false, \"feelingGuiltyBad\": false, \"suicidalThoughts\": false, \"difficultyTrusting\": false, \"severeIrritability\": true, \"compulsiveBehaviors\": false, \"fatigueFromWorrying\": false, \"hearingSeeingThings\": false, \"lowEnergyMotivation\": true, \"elevatedEuphoricMood\": true, \"troubleConcentrating\": false, \"worryingAboutJudgment\": false, \"avoidingTraumaTriggers\": false, \"littlePleasureInterest\": false, \"lowOrIncreasedAppetite\": false, \"unableToControlWorrying\": false, \"avoidingSocialSituations\": false, \"impulsivityOutOfCharacter\": false, \"recurrentUnwantedThoughts\": false, \"troubleSleepingDueToWorry\": false, \"avoidingPanicAttackTriggers\": false}',NULL,NULL,'{\"suicideAttempt\": false, \"therapyCounselingPast\": false, \"therapyCounselingCurrent\": false, \"substanceUseTreatmentOutpatient\": false, \"substanceUseTreatmentResidential\": false}',NULL,'{\"alcohol\": {\"past\": true, \"current\": false}, \"cocaine\": {\"past\": true, \"current\": false}, \"cannabis\": {\"past\": true, \"current\": false}, \"painPills\": {\"past\": true, \"current\": false}, \"heroinFentanyl\": {\"past\": true, \"current\": false}, \"methamphetamine\": {\"past\": true, \"current\": false}, \"prescriptionMisuse\": {\"past\": true, \"current\": false}}','{\"htn\": false, \"thyroid\": true, \"diabetes\": true, \"copdAsthma\": true, \"dyslipemia\": true, \"drugAllergies\": true}',NULL,'{\"anxiety\": true, \"depression\": true, \"substanceUse\": true, \"schizophrenia\": true, \"bipolarDisorder\": true}','{\"children\": \"0\", \"employment\": \"No\", \"maritalStatus\": \"Single\", \"livingSituation\": \"Home\"}',NULL,NULL,NULL,30,'2025-04-28 00:58:50'),(22,43,9,'2025-05-01','{\"paranoia\": false, \"flashbacks\": false, \"nightmares\": false, \"changeInSleep\": true, \"depressedMood\": false, \"fearfulOnEdge\": false, \"muscleTension\": false, \"talkingTooFast\": false, \"historyOfTrauma\": false, \"constantWorrying\": false, \"feelingGuiltyBad\": false, \"suicidalThoughts\": false, \"difficultyTrusting\": false, \"severeIrritability\": false, \"compulsiveBehaviors\": true, \"fatigueFromWorrying\": false, \"hearingSeeingThings\": false, \"lowEnergyMotivation\": true, \"elevatedEuphoricMood\": false, \"troubleConcentrating\": false, \"worryingAboutJudgment\": false, \"avoidingTraumaTriggers\": false, \"littlePleasureInterest\": false, \"lowOrIncreasedAppetite\": false, \"unableToControlWorrying\": false, \"avoidingSocialSituations\": true, \"impulsivityOutOfCharacter\": true, \"recurrentUnwantedThoughts\": false, \"troubleSleepingDueToWorry\": false, \"avoidingPanicAttackTriggers\": false}',NULL,NULL,'{\"suicideAttempt\": true, \"therapyCounselingPast\": true, \"therapyCounselingCurrent\": true, \"substanceUseTreatmentOutpatient\": false, \"substanceUseTreatmentResidential\": false}',NULL,'{\"alcohol\": {\"past\": false, \"current\": true}, \"cocaine\": {\"past\": false, \"current\": true}, \"cannabis\": {\"past\": false, \"current\": true}, \"painPills\": {\"past\": false, \"current\": true}, \"heroinFentanyl\": {\"past\": false, \"current\": true}, \"methamphetamine\": {\"past\": false, \"current\": true}, \"prescriptionMisuse\": {\"past\": false, \"current\": true}}','{\"htn\": true, \"thyroid\": true, \"diabetes\": true, \"copdAsthma\": false, \"dyslipemia\": true, \"drugAllergies\": false}',NULL,'{\"anxiety\": true, \"depression\": true, \"substanceUse\": true, \"schizophrenia\": false, \"bipolarDisorder\": false}','{\"children\": \"5\", \"employment\": \"Walmart\", \"maritalStatus\": \"Single\", \"livingSituation\": \"Well\"}','Prozac','Retinol','This patient is too much dangerous ',60,'2025-05-02 20:56:02'),(23,42,9,'2025-05-27','{\"paranoia\": true, \"flashbacks\": false, \"nightmares\": false, \"changeInSleep\": false, \"depressedMood\": false, \"fearfulOnEdge\": false, \"muscleTension\": false, \"talkingTooFast\": false, \"historyOfTrauma\": false, \"constantWorrying\": false, \"feelingGuiltyBad\": false, \"suicidalThoughts\": false, \"difficultyTrusting\": true, \"severeIrritability\": true, \"compulsiveBehaviors\": false, \"fatigueFromWorrying\": false, \"hearingSeeingThings\": false, \"lowEnergyMotivation\": false, \"elevatedEuphoricMood\": true, \"troubleConcentrating\": false, \"worryingAboutJudgment\": false, \"avoidingTraumaTriggers\": false, \"littlePleasureInterest\": false, \"lowOrIncreasedAppetite\": false, \"unableToControlWorrying\": false, \"avoidingSocialSituations\": false, \"impulsivityOutOfCharacter\": true, \"recurrentUnwantedThoughts\": false, \"troubleSleepingDueToWorry\": false, \"avoidingPanicAttackTriggers\": false}',NULL,NULL,'{\"suicideAttempt\": false, \"therapyCounselingPast\": false, \"therapyCounselingCurrent\": false, \"substanceUseTreatmentOutpatient\": false, \"substanceUseTreatmentResidential\": false}',NULL,'{\"alcohol\": {\"past\": false, \"current\": false}, \"cocaine\": {\"past\": false, \"current\": false}, \"cannabis\": {\"past\": false, \"current\": false}, \"painPills\": {\"past\": false, \"current\": false}, \"heroinFentanyl\": {\"past\": false, \"current\": false}, \"methamphetamine\": {\"past\": false, \"current\": false}, \"prescriptionMisuse\": {\"past\": false, \"current\": false}}','{\"htn\": false, \"thyroid\": false, \"diabetes\": false, \"copdAsthma\": false, \"dyslipemia\": false, \"drugAllergies\": false}',NULL,'{\"anxiety\": false, \"depression\": false, \"substanceUse\": false, \"schizophrenia\": true, \"bipolarDisorder\": false}','{\"children\": \"\", \"employment\": \"\", \"maritalStatus\": \"\", \"livingSituation\": \"\"}',NULL,NULL,NULL,10,'2025-05-28 01:35:50');
 /*!40000 ALTER TABLE `patient_intake` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -428,7 +429,7 @@ CREATE TABLE `patients` (
 
 LOCK TABLES `patients` WRITE;
 /*!40000 ALTER TABLE `patients` DISABLE KEYS */;
-INSERT INTO `patients` VALUES (41,'Versatile','Vans','2011-04-13','M224442',7,'A','2025-04-27',19,19,16,16),(42,'James','Cameron','1989-04-04','M93421',7,'E','2025-04-27',NULL,NULL,NULL,NULL),(43,'Steve','Smith','1993-05-04','M844232',7,'A','2025-05-02',13,13,3,3);
+INSERT INTO `patients` VALUES (41,'Versatile','Vans','2011-04-13','M224442',7,'A','2025-04-27',19,19,16,16),(42,'James','Cameron','1989-04-04','M93421',7,'A','2025-04-27',5,7,15,4),(43,'Steve','Smith','1993-05-04','M844232',7,'A','2025-05-02',13,13,3,3);
 /*!40000 ALTER TABLE `patients` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -548,7 +549,7 @@ CREATE TABLE `reminders` (
   CONSTRAINT `reminders_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`),
   CONSTRAINT `reminders_ibfk_2` FOREIGN KEY (`care_manager_id`) REFERENCES `users` (`id`),
   CONSTRAINT `reminders_ibfk_3` FOREIGN KEY (`completed_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -557,7 +558,7 @@ CREATE TABLE `reminders` (
 
 LOCK TABLES `reminders` WRITE;
 /*!40000 ALTER TABLE `reminders` DISABLE KEYS */;
-INSERT INTO `reminders` VALUES (49,41,9,'2025-05-03','Follow-up Assessment due for patient','Follow-up Assessment','pending',NULL,NULL,'2025-04-28 02:04:26'),(50,43,9,'2025-05-08','Follow-up Assessment due for patient','Follow-up Assessment','pending',NULL,NULL,'2025-05-02 20:56:59');
+INSERT INTO `reminders` VALUES (49,41,9,'2025-05-03','Follow-up Assessment due for patient','Follow-up Assessment','pending',NULL,NULL,'2025-04-28 02:04:26'),(50,43,9,'2025-05-08','Follow-up Assessment due for patient','Follow-up Assessment','pending',NULL,NULL,'2025-05-02 20:56:59'),(51,42,9,'2025-06-02','Follow-up Assessment due for patient','Follow-up Assessment','pending',NULL,NULL,'2025-05-28 01:36:16'),(52,42,9,'2025-06-02','Follow-up Assessment due for patient','Follow-up Assessment','pending',NULL,NULL,'2025-05-28 01:37:40');
 /*!40000 ALTER TABLE `reminders` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -583,6 +584,39 @@ CREATE TABLE `reminders_backup` (
 LOCK TABLES `reminders_backup` WRITE;
 /*!40000 ALTER TABLE `reminders_backup` DISABLE KEYS */;
 /*!40000 ALTER TABLE `reminders_backup` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `safety_plan_history`
+--
+
+DROP TABLE IF EXISTS `safety_plan_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `safety_plan_history` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `patient_id` int NOT NULL,
+  `action` enum('created','resolved') NOT NULL,
+  `action_date` datetime NOT NULL,
+  `resolved_by` int DEFAULT NULL,
+  `minutes_spent` int DEFAULT '0',
+  `notes` text,
+  PRIMARY KEY (`id`),
+  KEY `patient_id` (`patient_id`),
+  KEY `resolved_by` (`resolved_by`),
+  CONSTRAINT `safety_plan_history_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `safety_plan_history_ibfk_2` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `safety_plan_history`
+--
+
+LOCK TABLES `safety_plan_history` WRITE;
+/*!40000 ALTER TABLE `safety_plan_history` DISABLE KEYS */;
+INSERT INTO `safety_plan_history` VALUES (1,43,'resolved','2025-05-18 14:11:36',9,20,'Yes i discussed '),(2,42,'resolved','2025-05-27 18:36:57',9,10,'Safety plan completed by me.'),(3,42,'resolved','2025-05-27 18:37:59',9,100,'Done Done');
+/*!40000 ALTER TABLE `safety_plan_history` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -687,4 +721,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-05-13 16:12:41
+-- Dump completed on 2025-05-27 19:49:38
