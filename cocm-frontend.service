@@ -1,0 +1,18 @@
+[Unit]
+Description=COCM Frontend Service
+After=network.target
+
+[Service]
+Type=simple
+User=uphcs
+WorkingDirectory=/home/uphcs/Desktop/cocm/frontend
+ExecStart=/usr/bin/npm run dev
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=cocm-frontend
+Environment=NODE_ENV=development
+
+[Install]
+WantedBy=multi-user.target 
