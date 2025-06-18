@@ -50,6 +50,17 @@ router.get('/patients/:patientId/documents', async (req, res) => {
     );
     console.log('Intake forms fetched:', intakeForms);
 
+    // Fetch psychiatric consultations
+    const [psychConsultations] = await db.query(
+      `SELECT pc.id, pc.consult_date, pc.assessment_type, pc.company_name,
+              u.name AS consultant_name
+       FROM psych_consultations pc
+       JOIN users u ON pc.consultant_id = u.id
+       WHERE pc.patient_id = ? ORDER BY pc.consult_date DESC`,
+      [patientId]
+    );
+    console.log('Psych consultations fetched:', psychConsultations);
+
     const folders = [];
 
     // Process assessment folders
@@ -113,6 +124,27 @@ router.get('/patients/:patientId/documents', async (req, res) => {
         isOpen: false,
       }));
       folders.push(...attemptFolders);
+    }
+
+    // Process psychiatric consultation folders
+    if (psychConsultations && psychConsultations.length > 0) {
+      const psychFolders = psychConsultations.map((consultation) => ({
+        folderName: `Psych_Consultation_${format(new Date(consultation.consult_date), 'yyyy-MM-dd')}`,
+        date: format(new Date(consultation.consult_date), 'yyyy-MM-dd'),
+        files: [
+          {
+            name: `Psych_Consultation_${format(new Date(consultation.consult_date), 'yyyy-MM-dd')}.pdf`,
+            type: 'Psych_Consultation',
+            consultationId: consultation.id,
+            consultDate: format(new Date(consultation.consult_date), 'yyyy-MM-dd'),
+            assessmentType: consultation.assessment_type,
+            consultantName: consultation.consultant_name,
+            companyName: consultation.company_name,
+          },
+        ],
+        isOpen: false,
+      }));
+      folders.push(...psychFolders);
     }
 
     // Sort folders by date (newest first)
@@ -511,6 +543,18 @@ router.get('/patients/:patientId/master-document', async (req, res) => {
       [patientId]
     );
 
+    // 5. Fetch psychiatric consultations with full details
+    const [psychConsultations] = await db.query(
+      `SELECT pc.id, pc.consult_date, pc.assessment_type, pc.company_name, pc.minutes,
+              pc.summary, pc.recommendations, pc.treatment_plan, pc.medications,
+              u.name AS consultant_name, u.phone_number AS consultant_phone, u.email AS consultant_email
+       FROM psych_consultations pc
+       JOIN users u ON pc.consultant_id = u.id
+       WHERE pc.patient_id = ?
+       ORDER BY pc.consult_date ASC`,
+      [patientId]
+    );
+
     // Combine all documents and sort by date
     const allDocuments = [
       ...assessments.map(a => ({
@@ -536,6 +580,12 @@ router.get('/patients/:patientId/master-document', async (req, res) => {
         subType: sp.action === 'created' ? 'Safety Plan Created' : 'Safety Plan Resolved',
         date: sp.action_date,
         data: sp
+      })),
+      ...psychConsultations.map(pc => ({
+        type: 'psychConsultation',
+        subType: 'Psychiatric Consultation',
+        date: pc.consult_date,
+        data: pc
       }))]
     ;
     
@@ -655,17 +705,19 @@ router.get('/patients/:patientId/master-document', async (req, res) => {
         'Assessment': 0,
         'Contact Attempt': 0,
         'Patient Intake': 0,
-        'Safety Plan': 0
+        'Safety Plan': 0,
+        'Psychiatric Consultation': 0
       };
       
-      allDocuments.forEach(doc_item => {
-        if (hasValidContent(doc_item)) {
-          if (doc_item.type === 'assessment') documentCounts['Assessment']++;
-          else if (doc_item.type === 'contactAttempt') documentCounts['Contact Attempt']++;
-          else if (doc_item.type === 'intake') documentCounts['Patient Intake']++;
-          else if (doc_item.type === 'safetyPlan') documentCounts['Safety Plan']++;
-        }
-      });
+              allDocuments.forEach(doc_item => {
+          if (hasValidContent(doc_item)) {
+            if (doc_item.type === 'assessment') documentCounts['Assessment']++;
+            else if (doc_item.type === 'contactAttempt') documentCounts['Contact Attempt']++;
+            else if (doc_item.type === 'intake') documentCounts['Patient Intake']++;
+            else if (doc_item.type === 'safetyPlan') documentCounts['Safety Plan']++;
+            else if (doc_item.type === 'psychConsultation') documentCounts['Psychiatric Consultation']++;
+          }
+        });
       
       // Add summary to patient info page
       ensureSpace(100);
@@ -758,6 +810,10 @@ router.get('/patients/:patientId/master-document', async (req, res) => {
           case 'safetyPlan':
             renderSafetyPlanContentConcise(doc, doc_item.data, patient, itemDate, primaryColor, accentColor, lightGray, ensureSpace, markContentAdded);
             break;
+            
+          case 'psychConsultation':
+            renderPsychConsultationContentConcise(doc, doc_item.data, patient, itemDate, primaryColor, accentColor, lightGray, ensureSpace, markContentAdded);
+            break;
         }
         
         doc.y += 20; // Space between sections
@@ -824,10 +880,12 @@ function hasValidContent(doc_item) {
       return doc_item.data.attempt_date || doc_item.data.description;
     case 'intake':
       return doc_item.data.contact_date || doc_item.data.narrative || doc_item.data.symptoms;
-    case 'safetyPlan':
-      return doc_item.data.action_date || doc_item.data.action;
-    default:
-      return false;
+            case 'safetyPlan':
+          return doc_item.data.action_date || doc_item.data.action;
+        case 'psychConsultation':
+          return doc_item.data.consult_date && (doc_item.data.summary || doc_item.data.recommendations);
+        default:
+          return false;
   }
 }
 
@@ -1467,5 +1525,277 @@ function renderSafetyPlanContent(doc, safetyPlanData, patient, itemDate, primary
   const spNotesLines = Math.ceil((safetyPlanData.notes?.length || 0) / 80) + 1;
   doc.y += Math.max(30, spNotesLines * 15);
 }
+
+// Function to render Psychiatric Consultation content - Concise version
+function renderPsychConsultationContentConcise(doc, consultationData, patient, itemDate, primaryColor, accentColor, lightGray, ensureSpace, markContentAdded) {
+  markContentAdded();
+  ensureSpace(150);
+  
+  // Create header with colored background
+  const headerY = doc.y;
+  doc.rect(50, headerY, 500, 25).fill('#8E44AD');
+  doc.fillColor('white').fontSize(12).font('Helvetica-Bold')
+    .text('Psychiatric Consultation', 60, headerY + 7);
+  doc.y = headerY + 35;
+  
+  // Create summary table
+  const summaryData = [
+    ['Consultant', consultationData.consultant_name || 'Unknown'],
+    ['Company', consultationData.company_name || 'N/A'],
+    ['Assessment Type', consultationData.assessment_type || 'N/A'],
+    ['Duration', `${consultationData.minutes || 0} minutes`],
+    ['Contact', consultationData.consultant_phone || 'N/A']
+  ];
+  
+  doc.y = createBeautifulTable(doc, ['Detail', 'Value'], summaryData, doc.y, primaryColor, lightGray) + 15;
+  
+  // Summary section
+  if (consultationData.summary && consultationData.summary.trim()) {
+    markContentAdded();
+    ensureSpace(80);
+    
+    // Summary header
+    doc.rect(50, doc.y, 500, 20).fill('#F8F9FA');
+    doc.fillColor('#34495E').fontSize(11).font('Helvetica-Bold')
+      .text('Summary', 60, doc.y + 6);
+    doc.y += 25;
+    
+    // Summary content with border
+    const summaryHeight = Math.max(40, Math.ceil(consultationData.summary.length / 80) * 12 + 16);
+    doc.rect(50, doc.y, 500, summaryHeight).stroke('#BDC3C7');
+    doc.fillColor('#2C3E50').fontSize(10).font('Helvetica')
+      .text(consultationData.summary, 60, doc.y + 8, { width: 480, height: summaryHeight - 16 });
+    doc.y += summaryHeight + 15;
+  }
+  
+  // Recommendations section
+  if (consultationData.recommendations && consultationData.recommendations.trim()) {
+    markContentAdded();
+    ensureSpace(80);
+    
+    // Recommendations header
+    doc.rect(50, doc.y, 500, 20).fill('#F8F9FA');
+    doc.fillColor('#34495E').fontSize(11).font('Helvetica-Bold')
+      .text('Recommendations', 60, doc.y + 6);
+    doc.y += 25;
+    
+    // Recommendations content with border
+    const recommendationsHeight = Math.max(40, Math.ceil(consultationData.recommendations.length / 80) * 12 + 16);
+    doc.rect(50, doc.y, 500, recommendationsHeight).stroke('#BDC3C7');
+    doc.fillColor('#2C3E50').fontSize(10).font('Helvetica')
+      .text(consultationData.recommendations, 60, doc.y + 8, { width: 480, height: recommendationsHeight - 16 });
+    doc.y += recommendationsHeight + 15;
+  }
+  
+  // Additional sections if they exist (condensed)
+  const additionalInfo = [];
+  if (consultationData.treatment_plan && consultationData.treatment_plan.trim()) {
+    additionalInfo.push(['Treatment Plan', consultationData.treatment_plan.length > 200 ? 
+      consultationData.treatment_plan.substring(0, 200) + '...' : consultationData.treatment_plan]);
+  }
+  if (consultationData.medications && consultationData.medications.trim()) {
+    additionalInfo.push(['Medications', consultationData.medications.length > 200 ? 
+      consultationData.medications.substring(0, 200) + '...' : consultationData.medications]);
+  }
+  
+  if (additionalInfo.length > 0) {
+    markContentAdded();
+    ensureSpace(additionalInfo.length * 30 + 40);
+    doc.y = createBeautifulTable(doc, ['Category', 'Details'], additionalInfo, doc.y, '#8E44AD', lightGray) + 15;
+  }
+}
+
+// Export Psychiatric Consultation as PDF
+router.get('/patients/:patientId/psych-consultations/:consultationId/export', async (req, res) => {
+  const { patientId, consultationId } = req.params;
+  
+  try {
+    console.log('Export Psych Consultation PDF Request:', { patientId, consultationId });
+
+    const [consultation] = await db.query(
+      `SELECT 
+        pc.*,
+        u.name AS consultantName,
+        u.phone_number AS consultantPhone,
+        u.email AS consultantEmail,
+        p.first_name AS patientFirstName,
+        p.last_name AS patientLastName,
+        p.dob AS patientDob,
+        p.mrn AS patientMrn,
+        c.name AS clinicName
+      FROM psych_consultations pc
+      JOIN users u ON pc.consultant_id = u.id
+      JOIN patients p ON pc.patient_id = p.id
+      JOIN clinics c ON p.clinic_id = c.id
+      WHERE pc.id = ? AND pc.patient_id = ?`,
+      [consultationId, patientId]
+    );
+
+    if (!consultation.length) {
+      return res.status(404).json({ error: 'Psychiatric consultation not found' });
+    }
+
+    const data = consultation[0];
+    console.log('Consultation Data:', data);
+
+    const consultDate = format(new Date(data.consult_date), 'yyyy-MM-dd');
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Psych_Consultation_${consultDate}.pdf`);
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+
+    const doc = new PDFDocument({ 
+      margin: 40,
+      size: 'A4',
+      bufferPages: true
+    });
+    doc.pipe(res);
+
+    const primaryColor = '#1f2937';
+    const accentColor = '#3b82f6';
+    const lightGray = '#f8fafc';
+    const borderColor = '#e2e8f0';
+
+    // Compact Header
+    doc.rect(0, 0, doc.page.width, 85).fill(primaryColor);
+    
+    // Title and company in header
+    doc.fillColor('white').fontSize(18).font('Helvetica-Bold')
+      .text('PSYCHIATRIC CONSULTING NOTE', 40, 25, { align: 'center' });
+    
+    doc.fontSize(13).font('Helvetica-Bold')
+      .text(data.company_name || 'Private Practice', 40, 50, { align: 'center' });
+    
+    doc.fontSize(11).font('Helvetica')
+      .text(`${data.consultantName} | Phone: ${data.consultantPhone || 'N/A'}`, 40, 68, { align: 'center' });
+
+    let yPosition = 100;
+
+    // Compact header info section - two columns
+    doc.fillColor(lightGray).rect(40, yPosition, 515, 45).fill();
+    doc.rect(40, yPosition, 515, 45).stroke(borderColor);
+    
+    yPosition += 8;
+    
+    // Left column
+    doc.fillColor('black').fontSize(10).font('Helvetica-Bold')
+      .text('Patient:', 50, yPosition)
+      .text('DOB:', 50, yPosition + 12)
+      .text('MRN:', 50, yPosition + 24);
+    
+    doc.fontSize(10).font('Helvetica')
+      .text(`${data.patientFirstName} ${data.patientLastName}`, 90, yPosition)
+      .text(format(new Date(data.patientDob), 'MM/dd/yyyy'), 90, yPosition + 12)
+      .text(data.patientMrn, 90, yPosition + 24);
+    
+    // Right column  
+    doc.fontSize(10).font('Helvetica-Bold')
+      .text('Date:', 320, yPosition)
+      .text('Clinic:', 320, yPosition + 12)
+      .text('Assessment Type:', 320, yPosition + 24);
+    
+    doc.fontSize(10).font('Helvetica')
+      .text(format(new Date(data.consult_date), 'MM/dd/yyyy'), 360, yPosition)
+      .text(data.clinicName.trim(), 360, yPosition + 12)
+      .text(`${data.assessment_type} Assessment`, 410, yPosition + 24);
+
+    yPosition += 55;
+
+    // Helper function to add a section
+    const addSection = (title, content, isRequired = true) => {
+      if (!isRequired && (!content || !content.trim())) return;
+      
+      // Check if we need space for at least header + 3 lines of content
+      const estimatedHeight = 35 + Math.max(60, Math.ceil(content.length / 85) * 12);
+      if (yPosition + estimatedHeight > doc.page.height - 80) {
+        doc.addPage();
+        yPosition = 40;
+      }
+
+      // Section header with background
+      doc.fillColor('#f1f5f9').rect(40, yPosition, 515, 22).fill();
+      doc.rect(40, yPosition, 515, 22).stroke(borderColor);
+      doc.fillColor(primaryColor).fontSize(12).font('Helvetica-Bold')
+        .text(title, 45, yPosition + 6);
+      
+      yPosition += 32;
+      
+      // Content box
+      const textHeight = Math.max(50, Math.ceil(content.length / 85) * 11 + 20);
+      doc.rect(40, yPosition, 515, textHeight).stroke(borderColor);
+      
+      doc.fillColor('black').fontSize(10).font('Helvetica')
+        .text(content, 50, yPosition + 8, { 
+          width: 495,
+          lineGap: 2,
+          align: 'left'
+        });
+      
+      yPosition += textHeight + 15;
+    };
+
+    // Add all sections compactly
+    addSection('CLINICAL SUMMARY', data.summary);
+    addSection('RECOMMENDATIONS', data.recommendations);
+    addSection('TREATMENT PLAN', data.treatment_plan, false);
+    addSection('MEDICATIONS', data.medications, false);
+
+    // Follow-up info if exists
+    if (data.follow_up_needed && data.next_follow_up_date) {
+      if (yPosition + 40 > doc.page.height - 80) {
+        doc.addPage();
+        yPosition = 40;
+      }
+      
+      doc.fillColor('#fef3c7').rect(40, yPosition, 515, 28).fill();
+      doc.rect(40, yPosition, 515, 28).stroke('#f59e0b');
+      doc.fillColor('#92400e').fontSize(11).font('Helvetica-Bold')
+        .text(`Follow-up needed: ${format(new Date(data.next_follow_up_date), 'MM/dd/yyyy')}`, 45, yPosition + 8);
+      
+      yPosition += 40;
+    }
+
+    // Ensure footer fits on current page
+    const footerHeight = 70; // Total space needed for footer
+    const remainingSpace = doc.page.height - yPosition - 40;
+    
+    if (remainingSpace < footerHeight) {
+      doc.addPage();
+      yPosition = 40;
+    }
+    
+    // Position footer at bottom of page with some space above
+    const minSpaceAbove = 30;
+    const availableSpace = doc.page.height - yPosition - 40;
+    if (availableSpace > footerHeight + minSpaceAbove) {
+      yPosition = doc.page.height - footerHeight - 40;
+    } else {
+      yPosition += minSpaceAbove;
+    }
+
+    // Footer disclaimer - more compact
+    doc.moveTo(40, yPosition).lineTo(555, yPosition).stroke('#d1d5db');
+    yPosition += 10;
+    
+    doc.fillColor('#6b7280').fontSize(8).font('Helvetica')
+      .text('Recommendations are based on chart review and discussion with the care coordinator. These recommendations', 40, yPosition, { width: 515 })
+      .text('are consultative and subject to PCP discretion and clinical discussions with the patient.', 40, yPosition + 10, { width: 515 });
+    
+    yPosition += 28;
+    
+    // Signature - ensure it stays on same page
+    doc.fillColor('black').fontSize(11).font('Helvetica-Bold')
+      .text(data.consultantName, 40, yPosition);
+    doc.fontSize(9).font('Helvetica')
+      .text('Diplomate American Board of Psychiatry and Neurology', 40, yPosition + 15);
+
+    doc.end();
+  } catch (error) {
+    console.error('Error exporting psychiatric consultation PDF:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
 
 module.exports = router;

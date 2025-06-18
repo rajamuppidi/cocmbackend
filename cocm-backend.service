@@ -16,3 +16,8 @@ Environment=NODE_ENV=development
 
 [Install]
 WantedBy=multi-user.target 
+
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+
+sudo apt install -y nodejs
