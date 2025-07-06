@@ -198,6 +198,20 @@ router.post('/consult', [
       return res.status(403).json({ error: 'Unauthorized: Patient is not assigned to this consultant' });
     }
 
+    // Check if patient is inactive
+    const [patientStatus] = await db.query(
+      'SELECT status FROM patients WHERE id = ?',
+      [patientId]
+    );
+    
+    if (!patientStatus.length) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+    
+    if (patientStatus[0].status === 'D') {
+      return res.status(400).json({ error: 'Cannot create psychiatric consultations for inactive patients' });
+    }
+
     await db.query('START TRANSACTION');
 
     // Insert the consultation record
@@ -351,6 +365,20 @@ router.post('/consultations',
     } = req.body;
 
     try {
+      // Check if patient is inactive
+      const [patientStatus] = await db.query(
+        'SELECT status FROM patients WHERE id = ?',
+        [patientId]
+      );
+      
+      if (!patientStatus.length) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+      
+      if (patientStatus[0].status === 'D') {
+        return res.status(400).json({ error: 'Cannot create psychiatric consultations for inactive patients' });
+      }
+
       await db.query('START TRANSACTION');
 
       // Insert the psychiatric consultation

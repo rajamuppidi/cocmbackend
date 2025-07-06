@@ -644,6 +644,84 @@ router.get('/patients/:patientId/intake/:contactDate/export', async (req, res) =
   }
 });
 
+// Fetch Intake Form Data for Viewing by Date
+router.get('/patients/:patientId/intake/:contactDate', async (req, res) => {
+  const { patientId, contactDate } = req.params;
+  try {
+    console.log('Fetch Intake Form Data Request:', { patientId, contactDate });
+
+    let parsedDate;
+    try {
+      parsedDate = parseISO(contactDate);
+      if (!parsedDate || isNaN(parsedDate.getTime())) {
+        throw new Error('Invalid date format');
+      }
+    } catch (dateError) {
+      return res.status(400).json({ error: 'Invalid date format', details: dateError.message });
+    }
+    
+    const normalizedDate = format(parsedDate, 'yyyy-MM-dd');
+
+    const [intakeForm] = await db.query(
+      `SELECT 
+        pi.contact_date, pi.symptoms_json AS symptoms, pi.columbia_suicide_severity AS columbiaSuicideSeverity,
+        pi.anxiety_panic_attacks AS anxietyPanicAttacks, pi.past_mental_health_json AS pastMentalHealth,
+        pi.psychiatric_hospitalizations AS psychiatricHospitalizations, pi.substance_use_json AS substanceUse,
+        pi.medical_history_json AS medicalHistory, pi.other_medical_history AS otherMedicalHistory,
+        pi.family_mental_health_json AS familyMentalHealth, pi.social_situation_json AS socialSituation,
+        pi.current_medications AS currentMedications, pi.past_medications AS pastMedications,
+        pi.narrative, pi.minutes,
+        u.name AS created_by_name, u.role AS created_by_role
+      FROM patient_intake pi
+      LEFT JOIN users u ON pi.created_by = u.id
+      WHERE pi.patient_id = ? AND DATE(pi.contact_date) = ?`,
+      [patientId, normalizedDate]
+    );
+
+    if (!intakeForm.length) {
+      return res.status(404).json({ error: 'Patient intake form not found', details: { patientId, normalizedDate } });
+    }
+
+    const data = intakeForm[0];
+    
+    // Parse JSON fields safely
+    const safeJSON = (data) => {
+      if (typeof data === 'string') {
+        try {
+          return JSON.parse(data);
+        } catch (e) {
+          return {};
+        }
+      }
+      return data || {};
+    };
+
+    res.json({
+      contact_date: format(data.contact_date, 'yyyy-MM-dd'),
+      symptoms: safeJSON(data.symptoms),
+      columbia_suicide_severity: data.columbiaSuicideSeverity,
+      anxiety_panic_attacks: data.anxietyPanicAttacks,
+      past_mental_health: safeJSON(data.pastMentalHealth),
+      psychiatric_hospitalizations: data.psychiatricHospitalizations,
+      substance_use: safeJSON(data.substanceUse),
+      medical_history: safeJSON(data.medicalHistory),
+      other_medical_history: data.otherMedicalHistory,
+      family_mental_health: safeJSON(data.familyMentalHealth),
+      social_situation: safeJSON(data.socialSituation),
+      current_medications: data.currentMedications,
+      past_medications: data.pastMedications,
+      narrative: data.narrative,
+      minutes: data.minutes,
+      created_by: data.created_by_name || 'Unknown',
+      created_by_role: data.created_by_role || 'N/A'
+    });
+
+  } catch (error) {
+    console.error('Error fetching intake form data:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // Create a new patient intake
 router.post(
   '/patient-intake',

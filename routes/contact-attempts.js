@@ -25,6 +25,20 @@ router.post('/contact-attempts',
     try {
       await db.query('START TRANSACTION');
 
+      // Check if patient is inactive
+      const [patientStatus] = await db.query(
+        'SELECT status FROM patients WHERE id = ?',
+        [patientId]
+      );
+      
+      if (!patientStatus.length) {
+        throw new Error('Patient not found');
+      }
+      
+      if (patientStatus[0].status === 'D') {
+        throw new Error('Cannot record contact attempts for inactive patients');
+      }
+
       // Insert into contact_attempts table
       const [attemptResult] = await db.query(
         `INSERT INTO contact_attempts (patient_id, attempt_date, description) 

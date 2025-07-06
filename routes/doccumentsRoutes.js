@@ -165,6 +165,207 @@ router.get('/patients/:patientId/documents', async (req, res) => {
   }
 });
 
+// Export Combined Assessment (PHQ-9 and GAD-7) as PDF
+router.get('/patients/:patientId/assessments/:contactDate/export', async (req, res) => {
+  const { patientId, contactDate } = req.params;
+  try {
+    console.log('Export Combined Assessment PDF Request:', { patientId, contactDate });
+
+    const parsedDate = parseISO(contactDate);
+    const normalizedDate = format(parsedDate, 'yyyy-MM-dd', { timeZone: 'UTC' });
+    console.log('Normalized Date (UTC):', normalizedDate);
+
+    // Fetch both PHQ-9 and GAD-7 assessments for the given date
+    const [assessments] = await db.query(
+      `SELECT a.type, a.score, a.answers_json, c.contact_date, c.contact_type, u.name AS created_by, 
+              p.first_name AS patientFirstName, p.last_name AS patientLastName, 
+              c.interaction_mode AS sessionType, c.duration_minutes AS sessionDuration
+        FROM assessments a
+        JOIN contacts c ON a.patient_id = c.patient_id AND DATE(a.date) = DATE(c.contact_date)
+        JOIN users u ON c.created_by = u.id
+        JOIN patients p ON a.patient_id = p.id
+        WHERE a.patient_id = ? AND DATE(a.date) = ? AND a.type IN ('PHQ-9', 'GAD-7')
+        ORDER BY a.type`,
+      [patientId, normalizedDate]
+    );
+
+    if (!assessments.length) {
+      return res.status(404).json({ error: 'No assessments found for this date', details: { patientId, normalizedDate } });
+    }
+
+    const data = assessments[0]; // Common data (patient info, contact details)
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Combined_Assessment_${normalizedDate}.pdf`);
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    doc.pipe(res);
+
+    const primaryColor = '#2C3E50';
+    const accentColor = '#3498DB';
+    const lightGray = '#ECF0F1';
+
+    // Header
+    doc.rect(0, 0, 612, 80).fill(primaryColor);
+    doc.fillColor('white').fontSize(20).font('Helvetica-Bold')
+      .text('Combined Assessment Report', 40, 30, { align: 'left' });
+    doc.fontSize(10).text(`Generated on ${format(new Date(), 'MMMM d, yyyy')}`, { align: 'right' });
+
+    // Patient Information
+    doc.moveDown(3).fillColor(primaryColor).fontSize(14).font('Helvetica-Bold')
+      .text(`Patient: ${data.patientFirstName} ${data.patientLastName}`, 40);
+    doc.fillColor('black').fontSize(12).font('Helvetica')
+      .text(`Date: ${format(data.contact_date, 'MMMM d, yyyy')}`)
+      .text(`Care Manager: ${data.created_by || 'Unknown'}`)
+      .text(`Contact Type: ${data.contact_type || 'Unknown'}`)
+      .text(`Session Type: ${data.sessionType || 'Unknown'}`)
+      .text(`Duration: ${data.sessionDuration || 0} minutes`);
+    doc.moveDown(1);
+
+    const questions = {
+      'PHQ-9': [
+        "Over the last 2 weeks, how often have you been bothered by any of the following problems?",
+        "Little interest or pleasure in doing things",
+        "Feeling down, depressed, or hopeless",
+        "Trouble falling or staying asleep, or sleeping too much",
+        "Feeling tired or having little energy",
+        "Poor appetite or overeating",
+        "Feeling bad about yourself — or that you are a failure or have let yourself or your family down",
+        "Trouble concentrating on things, such as reading the newspaper or watching television",
+        "Moving or speaking so slowly that other people could have noticed? Or the opposite — being so fidgety or restless that you have been moving around a lot more than usual",
+        "Thoughts that you would be better off dead, or of hurting yourself in some way"
+      ],
+      'GAD-7': [
+        "Over the last 2 weeks, how often have you been bothered by any of the following problems?",
+        "Feeling nervous, anxious, or on edge",
+        "Not being able to stop or control worrying",
+        "Worrying too much about different things",
+        "Trouble relaxing",
+        "Being so restless that it is hard to sit still",
+        "Becoming easily annoyed or irritable",
+        "Feeling afraid as if something awful might happen"
+      ]
+    };
+
+    const options = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'];
+
+    // Process each assessment type
+    assessments.forEach((assessment, assessmentIndex) => {
+      const answers = assessment.answers_json ? JSON.parse(assessment.answers_json) : [];
+      const questionsList = questions[assessment.type].slice(1);
+
+      // Add page break if not the first assessment
+      if (assessmentIndex > 0) {
+        doc.addPage();
+      }
+
+      // Assessment header
+      doc.fillColor(accentColor).fontSize(16).font('Helvetica-Bold')
+        .text(`${assessment.type} Assessment (Score: ${assessment.score || 'N/A'})`, { underline: true });
+      doc.moveDown(0.5);
+
+      doc.fillColor(accentColor).fontSize(12).font('Helvetica-Bold')
+        .text(questions[assessment.type][0], { italic: true });
+      doc.moveDown(0.5);
+
+      // Create table
+      const tableData = {
+        headers: ['Question', ...options],
+        rows: questionsList.map((question, i) => {
+          const row = [question];
+          options.forEach((_, optIndex) => {
+            row.push(answers[i] === optIndex ? 'X' : '');
+          });
+          return row;
+        })
+      };
+
+      const startY = doc.y;
+      const tableWidth = 532;
+      const columnWidths = { 0: 300, 1: 58, 2: 58, 3: 58, 4: 58 };
+
+      // Table header
+      doc.rect(40, startY, tableWidth, 30).stroke();
+      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryColor);
+      let xPos = 40;
+      tableData.headers.forEach((header, i) => {
+        const colWidth = columnWidths[i];
+        doc.text(header, xPos + 5, startY + 10, {
+          width: colWidth - 10,
+          align: i === 0 ? 'left' : 'center'
+        });
+        xPos += colWidth;
+        if (i < tableData.headers.length - 1) {
+          doc.moveTo(xPos, startY).lineTo(xPos, startY + 30).stroke();
+        }
+      });
+
+      // Table rows
+      let yPos = startY + 30;
+      tableData.rows.forEach((row, rowIndex) => {
+        const rowHeight = 40;
+        if (rowIndex % 2 === 0) {
+          doc.rect(40, yPos, tableWidth, rowHeight).fill(lightGray);
+        }
+        xPos = 40;
+        doc.font('Helvetica').fontSize(9).fillColor('black');
+        row.forEach((cell, colIndex) => {
+          const colWidth = columnWidths[colIndex];
+          doc.text(cell, xPos + 5, yPos + 5, {
+            width: colWidth - 10,
+            height: rowHeight - 10,
+            align: colIndex === 0 ? 'left' : 'center'
+          });
+          xPos += colWidth;
+          if (colIndex < row.length - 1) {
+            doc.moveTo(xPos, yPos).lineTo(xPos, yPos + rowHeight).stroke();
+          }
+        });
+        doc.rect(40, yPos, tableWidth, rowHeight).stroke();
+        yPos += rowHeight;
+      });
+
+      // Score interpretation
+      doc.y = yPos + 20;
+      doc.x = 40;
+      
+      if (assessment.type === 'PHQ-9') {
+        doc.fillColor(accentColor).fontSize(14).font('Helvetica-Bold')
+          .text('PHQ-9 Score Interpretation', { underline: true });
+        doc.fillColor('black').fontSize(10)
+          .text('0-4: Minimal or no depression')
+          .text('5-9: Mild depression')
+          .text('10-14: Moderate depression')
+          .text('15-19: Moderately severe depression')
+          .text('20-27: Severe depression');
+      } else if (assessment.type === 'GAD-7') {
+        doc.fillColor(accentColor).fontSize(14).font('Helvetica-Bold')
+          .text('GAD-7 Score Interpretation', { underline: true });
+        doc.fillColor('black').fontSize(10)
+          .text('0-4: Minimal anxiety')
+          .text('5-9: Mild anxiety')
+          .text('10-14: Moderate anxiety')
+          .text('15-21: Severe anxiety');
+      }
+    });
+
+    // Footer on last page
+    const pageHeight = doc.page.height;
+    const footerY = Math.max(doc.y + 20, pageHeight - 60);
+    doc.moveTo(40, footerY).lineTo(572, footerY).stroke(accentColor);
+    doc.fillColor(primaryColor).fontSize(8).font('Helvetica')
+      .text(`Confidential - Combined Assessment Document | ${assessments.length === 1 ? 'Page 1 of 1' : 'Pages 1-2'}`, 40, footerY + 10, { align: 'center' });
+
+    doc.end();
+  } catch (error) {
+    console.error('Error exporting combined assessment PDF:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // Export Assessment as PDF (unchanged)
 router.get('/patients/:patientId/assessments/:contactDate/:type/export', async (req, res) => {
   const { patientId, contactDate, type } = req.params;
@@ -360,6 +561,108 @@ router.get('/patients/:patientId/assessments/:contactDate/:type/export', async (
   }
 });
 
+// Fetch Assessment Data for Viewing
+router.get('/patients/:patientId/assessments/:contactDate/:type', async (req, res) => {
+  const { patientId, contactDate, type } = req.params;
+  try {
+    console.log('Fetch Assessment Data Request:', { patientId, contactDate, type });
+
+    const parsedDate = parseISO(contactDate);
+    const normalizedDate = format(parsedDate, 'yyyy-MM-dd', { timeZone: 'UTC' });
+    console.log('Normalized Date (UTC):', normalizedDate);
+
+    if (type !== 'PHQ-9' && type !== 'GAD-7') {
+      return res.status(400).json({ error: 'Invalid assessment type' });
+    }
+
+    const [assessment] = await db.query(
+      `SELECT a.score, a.answers_json, c.contact_date, c.contact_type, u.name AS created_by, 
+              c.interaction_mode AS sessionType, c.duration_minutes AS sessionDuration
+        FROM assessments a
+        JOIN contacts c ON a.patient_id = c.patient_id AND DATE(a.date) = DATE(c.contact_date)
+        JOIN users u ON c.created_by = u.id
+        WHERE a.patient_id = ? AND DATE(a.date) = ? AND a.type = ?`,
+      [patientId, normalizedDate, type]
+    );
+
+    if (!assessment.length) {
+      return res.status(404).json({ error: 'Assessment not found', details: { patientId, normalizedDate, type } });
+    }
+
+    const data = assessment[0];
+    const answers = data.answers_json ? JSON.parse(data.answers_json) : [];
+
+    res.json({
+      total_score: data.score,
+      answers: answers,
+      contact_date: format(data.contact_date, 'yyyy-MM-dd'),
+      contact_type: data.contact_type,
+      created_by: data.created_by,
+      session_type: data.sessionType,
+      duration_minutes: data.sessionDuration
+    });
+
+  } catch (error) {
+    console.error('Error fetching assessment data:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+
+// Fetch Both Assessment Types for a Given Date
+router.get('/patients/:patientId/assessments/:contactDate', async (req, res) => {
+  const { patientId, contactDate } = req.params;
+  try {
+    console.log('Fetch Combined Assessment Data Request:', { patientId, contactDate });
+
+    const parsedDate = parseISO(contactDate);
+    const normalizedDate = format(parsedDate, 'yyyy-MM-dd', { timeZone: 'UTC' });
+    console.log('Normalized Date (UTC):', normalizedDate);
+
+    // Fetch both PHQ-9 and GAD-7 assessments for the given date
+    const [assessments] = await db.query(
+      `SELECT a.type, a.score, a.answers_json, c.contact_date, c.contact_type, u.name AS created_by, 
+              c.interaction_mode AS sessionType, c.duration_minutes AS sessionDuration
+        FROM assessments a
+        JOIN contacts c ON a.patient_id = c.patient_id AND DATE(a.date) = DATE(c.contact_date)
+        JOIN users u ON c.created_by = u.id
+        WHERE a.patient_id = ? AND DATE(a.date) = ? AND a.type IN ('PHQ-9', 'GAD-7')
+        ORDER BY a.type`,
+      [patientId, normalizedDate]
+    );
+
+    if (!assessments.length) {
+      return res.status(404).json({ error: 'No assessments found for this date', details: { patientId, normalizedDate } });
+    }
+
+    // Structure the response to include both assessment types
+    const result = {
+      contact_date: format(assessments[0].contact_date, 'yyyy-MM-dd'),
+      contact_type: assessments[0].contact_type,
+      created_by: assessments[0].created_by,
+      session_type: assessments[0].sessionType,
+      duration_minutes: assessments[0].sessionDuration,
+      assessments: {}
+    };
+
+    // Add each assessment type to the result
+    assessments.forEach(assessment => {
+      const answers = assessment.answers_json ? JSON.parse(assessment.answers_json) : [];
+      result.assessments[assessment.type] = {
+        type: assessment.type,
+        total_score: assessment.score,
+        answers: answers
+      };
+    });
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error fetching combined assessment data:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // Export Contact Attempt as PDF (unchanged)
 router.get('/patients/:patientId/contact-attempts/:attemptDate/export', async (req, res) => {
   const { patientId, attemptDate } = req.params;
@@ -446,6 +749,47 @@ router.get('/patients/:patientId/contact-attempts/:attemptDate/export', async (r
     doc.end();
   } catch (error) {
     console.error('Error exporting contact attempt PDF:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// Fetch Contact Attempt Data for Viewing
+router.get('/patients/:patientId/contact-attempts/:attemptDate', async (req, res) => {
+  const { patientId, attemptDate } = req.params;
+  try {
+    console.log('Fetch Contact Attempt Data Request:', { patientId, attemptDate });
+
+    const parsedDate = parseISO(attemptDate);
+    const normalizedDate = format(parsedDate, 'yyyy-MM-dd', { timeZone: 'UTC' });
+    console.log('Normalized Date (UTC):', normalizedDate);
+
+    const [attempt] = await db.query(
+      `SELECT ca.attempt_date, ca.description AS notes, 
+              u.name AS created_by_name, u.role AS created_by_role,
+              COALESCE(mt.total_minutes, 0) AS minutes
+        FROM contact_attempts ca
+        LEFT JOIN minute_tracking mt ON DATE(ca.attempt_date) = DATE(mt.tracking_date) AND ca.patient_id = mt.user_id
+        LEFT JOIN users u ON mt.user_id = u.id
+        WHERE ca.patient_id = ? AND DATE(ca.attempt_date) = ?`,
+      [patientId, normalizedDate]
+    );
+
+    if (!attempt.length) {
+      return res.status(404).json({ error: 'Contact attempt not found', details: { patientId, normalizedDate } });
+    }
+
+    const data = attempt[0];
+
+    res.json({
+      attempt_date: format(data.attempt_date, 'yyyy-MM-dd'),
+      notes: data.notes || 'No notes provided',
+      created_by: data.created_by_name || 'Unknown',
+      created_by_role: data.created_by_role || 'N/A',
+      minutes: Number.isNaN(Number(data.minutes)) ? 0 : Number(data.minutes)
+    });
+
+  } catch (error) {
+    console.error('Error fetching contact attempt data:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
@@ -709,15 +1053,15 @@ router.get('/patients/:patientId/master-document', async (req, res) => {
         'Psychiatric Consultation': 0
       };
       
-              allDocuments.forEach(doc_item => {
-          if (hasValidContent(doc_item)) {
-            if (doc_item.type === 'assessment') documentCounts['Assessment']++;
-            else if (doc_item.type === 'contactAttempt') documentCounts['Contact Attempt']++;
-            else if (doc_item.type === 'intake') documentCounts['Patient Intake']++;
-            else if (doc_item.type === 'safetyPlan') documentCounts['Safety Plan']++;
+      allDocuments.forEach(doc_item => {
+        if (hasValidContent(doc_item)) {
+          if (doc_item.type === 'assessment') documentCounts['Assessment']++;
+          else if (doc_item.type === 'contactAttempt') documentCounts['Contact Attempt']++;
+          else if (doc_item.type === 'intake') documentCounts['Patient Intake']++;
+          else if (doc_item.type === 'safetyPlan') documentCounts['Safety Plan']++;
             else if (doc_item.type === 'psychConsultation') documentCounts['Psychiatric Consultation']++;
-          }
-        });
+        }
+      });
       
       // Add summary to patient info page
       ensureSpace(100);
@@ -880,12 +1224,12 @@ function hasValidContent(doc_item) {
       return doc_item.data.attempt_date || doc_item.data.description;
     case 'intake':
       return doc_item.data.contact_date || doc_item.data.narrative || doc_item.data.symptoms;
-            case 'safetyPlan':
-          return doc_item.data.action_date || doc_item.data.action;
+    case 'safetyPlan':
+      return doc_item.data.action_date || doc_item.data.action;
         case 'psychConsultation':
           return doc_item.data.consult_date && (doc_item.data.summary || doc_item.data.recommendations);
-        default:
-          return false;
+    default:
+      return false;
   }
 }
 

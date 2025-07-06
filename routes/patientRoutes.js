@@ -194,6 +194,39 @@ router.get('/patients/enrolled', async (req, res) => {
   }
 });
 
+// Fetch inactive patients
+router.get('/patients/inactive', async (req, res) => {
+  const { clinicId } = req.query;
+  console.log(`Fetching inactive patients for clinic ID: ${clinicId}`);
+  try {
+    const query = `
+      SELECT p.id, p.mrn, p.first_name AS firstName, p.last_name AS lastName, p.status,
+             DATE_FORMAT(p.dob, '%Y-%m-%d') AS dob, 
+             DATE_FORMAT(p.enrollment_date, '%Y-%m-%d') AS enrollmentDate,
+             (SELECT score FROM assessments WHERE patient_id = p.id AND type = 'PHQ-9' ORDER BY created_at ASC LIMIT 1) AS phq9First,
+             (SELECT score FROM assessments WHERE patient_id = p.id AND type = 'PHQ-9' ORDER BY created_at DESC LIMIT 1) AS phq9Last,
+             (SELECT score FROM assessments WHERE patient_id = p.id AND type = 'GAD-7' ORDER BY created_at ASC LIMIT 1) AS gad7First,
+             (SELECT score FROM assessments WHERE patient_id = p.id AND type = 'GAD-7' ORDER BY created_at DESC LIMIT 1) AS gad7Last,
+             (SELECT DATE_FORMAT(deactivation_date, '%Y-%m-%d') FROM deactivations WHERE patient_id = p.id ORDER BY deactivation_date DESC LIMIT 1) AS deactivationDate,
+             (SELECT reason FROM deactivations WHERE patient_id = p.id ORDER BY deactivation_date DESC LIMIT 1) AS deactivationReason
+      FROM patients p
+      WHERE p.clinic_id = ? AND p.status = 'D'
+    `;
+    const [patients] = await db.query(query, [clinicId]);
+    const patientsWithDefaultScores = patients.map(patient => ({
+      ...patient,
+      phq9First: patient.phq9First !== null ? patient.phq9First : 0,
+      phq9Last: patient.phq9Last !== null ? patient.phq9Last : 0,
+      gad7First: patient.gad7First !== null ? patient.gad7First : 0,
+      gad7Last: patient.gad7Last !== null ? patient.gad7Last : 0
+    }));
+    res.json(patientsWithDefaultScores);
+  } catch (error) {
+    console.error('Error fetching inactive patients:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get patient info
 router.get('/patients/:patientId', async (req, res) => {
   const { patientId } = req.params;
@@ -252,6 +285,20 @@ router.post('/initial-assessment', async (req, res) => {
 
   try {
     await db.query('START TRANSACTION');
+
+    // Check if patient is inactive
+    const [patientStatus] = await db.query(
+      'SELECT status FROM patients WHERE id = ?',
+      [patientId]
+    );
+    
+    if (!patientStatus.length) {
+      throw new Error('Patient not found');
+    }
+    
+    if (patientStatus[0].status === 'D') {
+      throw new Error('Cannot perform assessments on inactive patients');
+    }
 
     const parsedContactDate = new Date(contactDate);
     if (isNaN(parsedContactDate.getTime())) throw new Error('Invalid contact date format');
@@ -381,6 +428,20 @@ router.post('/followup-assessment', async (req, res) => {
 
   try {
     await db.query('START TRANSACTION');
+
+    // Check if patient is inactive
+    const [patientStatus] = await db.query(
+      'SELECT status FROM patients WHERE id = ?',
+      [patientId]
+    );
+    
+    if (!patientStatus.length) {
+      throw new Error('Patient not found');
+    }
+    
+    if (patientStatus[0].status === 'D') {
+      throw new Error('Cannot perform assessments on inactive patients');
+    }
 
     const parsedContactDate = new Date(contactDate);
     if (isNaN(parsedContactDate.getTime())) throw new Error('Invalid contact date format');
@@ -632,6 +693,70 @@ router.get('/consultants', async (req, res) => {
   } catch (error) {
     console.error('Error fetching psychiatric consultants:', error);
     res.status(500).json({ error: 'Failed to fetch consultants' });
+  }
+});
+
+// Deactivate patient
+router.post('/patients/:patientId/deactivate', async (req, res) => {
+  const { patientId } = req.params;
+  const { reason } = req.body;
+  
+  if (!reason) {
+    return res.status(400).json({ error: 'Deactivation reason is required' });
+  }
+  
+  try {
+    await db.query('START TRANSACTION');
+    
+    // Update patient status to 'D' (Deactivated)
+    const [updateResult] = await db.query(
+      'UPDATE patients SET status = "D" WHERE id = ?',
+      [patientId]
+    );
+    
+    if (updateResult.affectedRows === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+    
+    // Record deactivation reason in deactivations table
+    await db.query(
+      'INSERT INTO deactivations (patient_id, deactivation_date, reason) VALUES (?, CURDATE(), ?)',
+      [patientId, reason]
+    );
+    
+    await db.query('COMMIT');
+    
+    res.status(200).json({ message: 'Patient deactivated successfully' });
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Error deactivating patient:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get deactivation details for a patient
+router.get('/patients/:patientId/deactivation', async (req, res) => {
+  const { patientId } = req.params;
+  
+  try {
+    const [deactivation] = await db.query(
+      `SELECT d.id, DATE_FORMAT(d.deactivation_date, '%Y-%m-%d') AS deactivation_date, d.reason
+       FROM deactivations d
+       WHERE d.patient_id = ?
+       ORDER BY d.deactivation_date DESC
+       LIMIT 1`,
+      [patientId]
+    );
+    
+    if (deactivation.length === 0) {
+      return res.status(404).json({ error: 'No deactivation record found' });
+    }
+    
+    res.status(200).json(deactivation[0]);
+  } catch (error) {
+    console.error('Error fetching deactivation details:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
